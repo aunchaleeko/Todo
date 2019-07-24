@@ -13,3 +13,4 @@ class MyTask(subject: String, detail: String, status: String) extends Actor {
       self ! PoisonPill
   }
 }
+//
