@@ -9,9 +9,6 @@ case class TaskDescription(detail: String,status: String) {
   require(detail != "")
   require(status != "")
 }
-case class UpdateStatus(status: String){
-  require(status != "")
-}
 
 // message containing an error
 case class Error(message: String)
@@ -20,7 +17,6 @@ case class Error(message: String)
 trait ConvertJson extends PlayJsonSupport {
 
   implicit val taskDescriptionFormat: OFormat[TaskDescription] = Json.format[TaskDescription]
-  implicit val updateDescriptionFormat: OFormat[UpdateStatus] = Json.format[UpdateStatus]
   implicit val errorFormat: OFormat[Error] = Json.format[Error]
   implicit val taskFormat: OFormat[Task] = Json.format[Task]
   implicit val tasksFormat: OFormat[Tasks] = Json.format[Tasks]

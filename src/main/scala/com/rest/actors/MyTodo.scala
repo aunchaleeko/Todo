@@ -21,16 +21,24 @@ class MyTodo(implicit timeout: Timeout) extends Actor {
 
       def create(): Unit = {
         //        creates the task
-        println("receive create1")
         context.actorOf(MyTaskMsg.props(subject,detail,status), subject)
-        println("receive create2")
+
         sender() ! TaskCreated(Task(subject, detail,status))
-        println("receive create3")
       }
       //      If task exists it responds with task Exists
-      println("receive create")
       context.child(subject).fold(create())(_ => sender() ! TaskExists)
 
+
+
+
+    case CFUpdateTask(subject, detail,status) =>
+      def create(): Unit = {
+        //        creates the task
+        context.actorOf(MyTaskMsg.props(subject,detail,status), subject)
+        sender() ! TaskCreated(Task(subject, detail,status))
+      }
+      //      If task exists it responds with task Exists
+      context.child(subject).fold(create())(_ => sender() ! TaskExists)
 
     case GetTask(subject) =>
       def notFound() : Unit = sender() ! None
@@ -58,16 +66,12 @@ class MyTodo(implicit timeout: Timeout) extends Actor {
       context.child(subject).fold(notFound())(deleteTask)
 
 
-    case UpdateStatus(subject,status) =>
+    case DeleteForUpdateTask(subject,status) =>
       def notFound(): Unit = sender() ! None
-      def deleteTask(child: ActorRef): Unit = child forward MyTaskMsg.Update
+      def deleteTask(child: ActorRef): Unit = child forward MyTaskMsg.DeleteForUpdate
       context.child(subject).fold(notFound())(deleteTask)
 
-
-
-
   }
-
 
 
 }

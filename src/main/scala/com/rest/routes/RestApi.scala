@@ -11,7 +11,7 @@ import com.rest.messages._
 
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 import StatusCodes._
-import com.rest.util.{ConvertJson, Error, TaskDescription, UpdateStatus}
+import com.rest.util.{ConvertJson, Error, TaskDescription}
 
 
 
@@ -66,11 +66,11 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
   }
 
 
-  protected  val updateStatus: Route = {
+  protected  val updateTask: Route = {
     pathPrefix(service / "tasks" /Segment){ subject =>
       put {
-        entity(as[UpdateStatus]) { param =>
-          onSuccess(updateStatus(subject,param.detail,param.status)) {
+        entity(as[TaskDescription]) { param =>
+          onSuccess(updateTask(subject,param.detail,param.status)) {
             case MyTodoMsg.TaskCreated(task) =>
               complete("success")
             case MyTodoMsg.TaskExists =>
@@ -83,9 +83,6 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
 
     }
   }
-
-
-
 
 
   protected  val deleteTaskRoute: Route = {
@@ -101,7 +98,7 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
     }
   }
 
-  val routes: Route = createTaskRoute ~ getTaskRoute ~ getAllTasksRoute ~ deleteTaskRoute ~ updateStatus
+  val routes: Route = createTaskRoute ~ getTaskRoute ~ getAllTasksRoute ~ deleteTaskRoute ~ updateTask
 }
 
 trait CoachellaApi {
@@ -132,21 +129,22 @@ trait CoachellaApi {
 
 
     def deleteforUpdate(subject: String, detail: String, status: String): Future[TaskResponse] = {
-      coachella.ask(MyTodoMsg.DeleteForUpdateStatus(subject,status)).mapTo[TaskResponse]
+      coachella.ask(MyTodoMsg.DeleteForUpdateTask(subject,status)).mapTo[TaskResponse]
 
   }
 
 
-  def updateStatus(subject: String, detail: String, status: String): Future[TaskResponse]  = {
+  def updateTask(subject: String, detail: String, status: String): Future[TaskResponse]  = {
     for {
       d <-  deleteforUpdate(subject,detail,status)
+      c <-  createForUpdateTask(subject,detail,status)
     } yield  {
+      println(List(c))
       createForUpdateTask(subject,detail,status)
       d
     }
 
   }
-
 
 
 }

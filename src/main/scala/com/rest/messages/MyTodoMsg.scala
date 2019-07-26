@@ -10,12 +10,13 @@ object MyTodoMsg {
   case class GetTask(subject: String)
   case object GetTasks
   case class DeleteTask(subject: String)
-  case class UpdateStatus(subject: String, status: String)
+  case class DeleteForUpdateTask(subject: String, status: String)
+  case class CFUpdateTask(subject: String, detail: String, status: String)
 
-  case class Task(name: String, detail: String, status: String)
+  case class Task(subject: String, detail: String, status: String)
   case class Tasks(tasks: Vector[Task])
 
   sealed trait TaskResponse
-  case class TaskCreated(event: Task) extends TaskResponse
+  case class TaskCreated(task: Task) extends TaskResponse
   case object TaskExists extends TaskResponse
 }
