@@ -1,6 +1,6 @@
 package com.rest.routes
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem, PoisonPill}
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.http.scaladsl.model.StatusCodes
@@ -70,7 +70,7 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
     pathPrefix(service / "tasks" /Segment){ subject =>
       put {
         entity(as[UpdateStatus]) { param =>
-          onSuccess(updateStatus(subject,param.status,param.status)) {
+          onSuccess(updateStatus(subject,param.detail,param.status)) {
             case MyTodoMsg.TaskCreated(task) =>
               complete("success")
             case MyTodoMsg.TaskExists =>
@@ -101,8 +101,6 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
     }
   }
 
-
-
   val routes: Route = createTaskRoute ~ getTaskRoute ~ getAllTasksRoute ~ deleteTaskRoute ~ updateStatus
 }
 
@@ -116,11 +114,15 @@ trait CoachellaApi {
   lazy val coachella: ActorRef = createCoachella()
 
   def createTask(subject: String, detail: String, status: String): Future[TaskResponse] = {
-    println("create")
     coachella.ask(CreateTask(subject, detail,status))
       .mapTo[TaskResponse]
   }
 
+  def createForUpdateTask(subject: String, detail: String, status: String): Future[TaskResponse] = {
+    println("init create")
+    coachella.ask(CFUpdateTask(subject, detail,status))
+      .mapTo[TaskResponse]
+  }
   def getTasks(): Future[Tasks] = coachella.ask(GetTasks).mapTo[Tasks]
 
   def getTask(subject: String): Future[Option[Task]] = coachella.ask(GetTask(subject)).mapTo[Option[Task]]
@@ -129,18 +131,18 @@ trait CoachellaApi {
 
 
 
-    def updateStatus2(subject: String, detail: String, status: String): Future[TaskResponse] = {
-      coachella.ask(MyTodoMsg.UpdateStatus(subject,status)).mapTo[TaskResponse]
+    def deleteforUpdate(subject: String, detail: String, status: String): Future[TaskResponse] = {
+      coachella.ask(MyTodoMsg.DeleteForUpdateStatus(subject,status)).mapTo[TaskResponse]
 
   }
 
 
   def updateStatus(subject: String, detail: String, status: String): Future[TaskResponse]  = {
     for {
-      a <-  updateStatus2(subject,detail,status)
-      b <-  createTask(subject,detail,status)
+      d <-  deleteforUpdate(subject,detail,status)
     } yield  {
-      b
+      createForUpdateTask(subject,detail,status)
+      d
     }
 
   }
