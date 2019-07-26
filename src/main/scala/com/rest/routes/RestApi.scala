@@ -4,14 +4,15 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{complete, _}
 import akka.http.scaladsl.server._
 import com.rest.messages.MyTodoMsg._
 import com.rest.messages._
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 import StatusCodes._
-import com.rest.util.{Error, ConvertJson, TaskDescription}
+import com.rest.util.{ConvertJson, Error, TaskDescription, UpdateStatus}
+
 
 
 class RestApi(system: ActorSystem, timeout: Timeout) extends RestRoutes {
@@ -22,7 +23,7 @@ class RestApi(system: ActorSystem, timeout: Timeout) extends RestRoutes {
 }
 
 trait RestRoutes extends CoachellaApi with ConvertJson {
-  val service = "my-todo"
+  val service = "todo"
 
   protected val createTaskRoute: Route = {
     pathPrefix(service  / "tasks" / Segment ) { subject ⇒
@@ -56,7 +57,7 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
     pathPrefix(service / "tasks") {
       get {
         pathEndOrSingleSlash {
-          onSuccess(getTasks()) { tasks ⇒
+          onSuccess(getTasks()) { tasks =>
             complete(OK, tasks)
           }
         }
@@ -64,8 +65,31 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
     }
   }
 
+
+  protected  val updateStatus: Route = {
+    pathPrefix(service / "tasks" /Segment){ subject =>
+      put {
+        entity(as[UpdateStatus]) { param =>
+          onSuccess(updateStatus(subject,param.status,param.status)) {
+            case MyTodoMsg.TaskCreated(task) =>
+              complete("success")
+            case MyTodoMsg.TaskExists =>
+              val err = Error(s"$subject task already exists!")
+              complete(BadRequest, err)
+
+          }
+        }
+      }
+
+    }
+  }
+
+
+
+
+
   protected  val deleteTaskRoute: Route = {
-    pathPrefix(service /"tasks" /Segment){ subject =>
+    pathPrefix(service /"delete" /Segment){ subject =>
       delete{
         pathEndOrSingleSlash{
           onSuccess(deleteTask(subject)) {
@@ -79,8 +103,7 @@ trait RestRoutes extends CoachellaApi with ConvertJson {
 
 
 
-
-  val routes: Route = createTaskRoute ~ getTaskRoute ~ getAllTasksRoute ~ deleteTaskRoute
+  val routes: Route = createTaskRoute ~ getTaskRoute ~ getAllTasksRoute ~ deleteTaskRoute ~ updateStatus
 }
 
 trait CoachellaApi {
@@ -92,8 +115,9 @@ trait CoachellaApi {
 
   lazy val coachella: ActorRef = createCoachella()
 
-  def createTask(event: String, detail: String, flag: String): Future[TaskResponse] = {
-    coachella.ask(CreateTask(event, detail,flag))
+  def createTask(subject: String, detail: String, status: String): Future[TaskResponse] = {
+    println("create")
+    coachella.ask(CreateTask(subject, detail,status))
       .mapTo[TaskResponse]
   }
 
@@ -102,5 +126,27 @@ trait CoachellaApi {
   def getTask(subject: String): Future[Option[Task]] = coachella.ask(GetTask(subject)).mapTo[Option[Task]]
 
   def deleteTask(subject: String): Future[Option[Task]] = coachella.ask(DeleteTask(subject)).mapTo[Option[Task]]
+
+
+
+    def updateStatus2(subject: String, detail: String, status: String): Future[TaskResponse] = {
+      println("update")
+      coachella.ask(MyTodoMsg.UpdateStatus(subject,status)).mapTo[TaskResponse]
+
+  }
+
+
+  def updateStatus(subject: String, detail: String, status: String): Future[TaskResponse]  = {
+    println("Hi")
+    for {
+      a <-  updateStatus2(subject,detail,status)
+      b <-  createTask(subject,detail,status)
+    } yield  {
+      b
+    }
+
+  }
+
+
 
 }
