@@ -9,8 +9,8 @@ object MyTodoMsg {
   case class CreateTask(subject: String, detail: String, status: String)
   case class GetTask(subject: String)
   case object GetTasks
-  case class GetTickets(event: String, tickets: Int)
-  case class DeleteTask(name: String)
+  case class DeleteTask(subject: String)
+  case class UpdateStatus(subject: String, status: String)
 
   case class Task(name: String, detail: String, status: String)
   case class Tasks(tasks: Vector[Task])

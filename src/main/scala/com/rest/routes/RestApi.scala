@@ -130,14 +130,12 @@ trait CoachellaApi {
 
 
     def updateStatus2(subject: String, detail: String, status: String): Future[TaskResponse] = {
-      println("update")
       coachella.ask(MyTodoMsg.UpdateStatus(subject,status)).mapTo[TaskResponse]
 
   }
 
 
   def updateStatus(subject: String, detail: String, status: String): Future[TaskResponse]  = {
-    println("Hi")
     for {
       a <-  updateStatus2(subject,detail,status)
       b <-  createTask(subject,detail,status)
